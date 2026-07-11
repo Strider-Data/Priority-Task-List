@@ -1,0 +1,1527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#FCF9F1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Paper List">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Paper List</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&family=Kalam:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FCF9F1;
+    --rule:#CBDDE9;
+    --margin-red:#E7A69C;
+    --ink:#3B3A36;
+    --pencil:#8F8D84;
+    --pencil-light:#B9B7AC;
+    --red-pencil:#C0524A;
+    --desk:#E9E2D3;
+    --row-h:38px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    background:var(--desk);
+    background-image:radial-gradient(ellipse at 50% -20%, #f2ecdd 0%, var(--desk) 70%);
+    background-attachment:fixed;
+    font-family:'Kalam','Comic Sans MS',cursive;
+    color:var(--ink);
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+    padding:28px 10px 60px;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .sheet{
+    position:relative;
+    width:100%;
+    max-width:720px;
+    background:var(--paper);
+    border-radius:2px 2px 3px 3px;
+    box-shadow:0 1px 2px rgba(60,50,30,.12), 0 8px 28px rgba(60,50,30,.18);
+    padding:26px 28px 44px 74px;
+    min-height:600px;
+    height:auto;
+  }
+  .sheet::before{
+    content:"";
+    position:absolute;
+    top:0;bottom:0;left:56px;
+    width:1.5px;
+    background:var(--margin-red);
+    opacity:.75;
+  }
+  .sheet::after{
+    content:"";
+    position:absolute;inset:0;
+    pointer-events:none;
+    border-radius:inherit;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  }
+  .sheet > *{position:relative;z-index:1;}
+  /* task lists sit a layer higher so the date popover isn't covered
+     by the sections that come after them */
+  #priList, #taskList{z-index:2;}
+
+  .hole{
+    position:absolute;
+    left:20px;
+    width:16px;height:16px;
+    border-radius:50%;
+    background:var(--desk);
+    box-shadow:inset 0 1px 2px rgba(60,50,30,.35);
+    z-index:2;
+  }
+  .hole.h1{top:90px;} .hole.h2{top:50%;} .hole.h3{bottom:90px;}
+
+  header{
+    display:flex;
+    align-items:baseline;
+    gap:14px;
+    flex-wrap:wrap;
+    margin-bottom:6px;
+  }
+  .date-big{
+    font-family:'Caveat',cursive;
+    font-weight:700;
+    font-size:44px;
+    line-height:1;
+    letter-spacing:.5px;
+  }
+  .date-sub{
+    font-family:'Caveat',cursive;
+    font-weight:500;
+    font-size:22px;
+    color:var(--pencil);
+  }
+  .nav{
+    margin-left:auto;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .nav button{
+    background:none;border:none;cursor:pointer;
+    font-family:'Caveat',cursive;
+    font-size:22px;
+    color:var(--ink);
+    padding:4px 8px;
+    border-radius:6px;
+    line-height:1;
+  }
+  .nav button:hover{background:rgba(0,0,0,.05);}
+  .nav button:focus-visible{outline:2px dashed var(--pencil);outline-offset:2px;}
+  .nav .today-link{
+    font-size:19px;
+    color:var(--red-pencil);
+    text-decoration:underline;
+    text-underline-offset:3px;
+    text-decoration-style:wavy;
+    text-decoration-thickness:1px;
+  }
+  .nav .today-link.hidden{visibility:hidden;}
+
+  .gear{
+    background:none;border:none;cursor:pointer;
+    padding:5px;border-radius:8px;
+    color:var(--pencil);
+    line-height:0;
+  }
+  .gear:hover{color:var(--ink);background:rgba(0,0,0,.05);}
+  .gear:focus-visible{outline:2px dashed var(--pencil);outline-offset:2px;}
+  .gear svg{width:21px;height:21px;}
+
+  .statusbar{
+    display:flex;align-items:center;gap:10px;
+    flex-wrap:wrap;
+  }
+  .streak{
+    font-family:'Caveat',cursive;
+    font-size:19px;
+    color:var(--pencil);
+    margin-top:-2px;
+    min-height:24px;
+  }
+  .streak b{color:var(--red-pencil);font-weight:600;}
+  .sync-chip{
+    font-family:'Caveat',cursive;
+    font-size:17px;
+    color:var(--pencil-light);
+    margin-left:auto;
+  }
+  .sync-chip.ok{color:#7A9471;}
+  .sync-chip.err{color:var(--red-pencil);}
+
+  .future-note, .past-note{
+    font-family:'Caveat',cursive;
+    font-size:19px;
+    color:var(--pencil);
+    margin:2px 0 0;
+  }
+
+  .section-title{
+    font-family:'Caveat',cursive;
+    font-weight:600;
+    font-size:26px;
+    margin:26px 0 4px;
+    color:var(--ink);
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  .section-title small{
+    font-size:17px;
+    font-weight:500;
+    color:var(--pencil-light);
+  }
+  .underline-squiggle{
+    display:block;
+    width:120px;height:6px;
+    margin-top:-2px;
+    color:var(--red-pencil);
+  }
+
+  .row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    min-height:var(--row-h);
+    border-bottom:1.5px solid var(--rule);
+    padding:2px 0;
+    position:relative;
+  }
+  .row .num{
+    font-family:'Caveat',cursive;
+    font-weight:600;
+    font-size:22px;
+    color:var(--red-pencil);
+    width:24px;
+    height:26px;
+    flex:none;
+    display:flex;align-items:center;justify-content:center;
+    border:1.5px solid var(--red-pencil);
+    border-radius:46% 54% 52% 48% / 55% 48% 52% 45%;
+    transform:rotate(-2deg);
+  }
+
+  .box{
+    flex:none;
+    width:21px;height:21px;
+    border:1.6px solid #6E6C63;
+    border-radius:3px 5px 4px 6px / 5px 3px 6px 4px;
+    background:transparent;
+    cursor:pointer;
+    position:relative;
+    transform:rotate(-.6deg);
+    padding:0;
+  }
+  .box:focus-visible{outline:2px dashed var(--pencil);outline-offset:2px;}
+  .box svg{
+    position:absolute;
+    top:-6px;left:-2px;
+    width:28px;height:28px;
+    overflow:visible;
+    pointer-events:none;
+  }
+  .box svg path{
+    stroke:var(--ink);
+    stroke-width:2.4;
+    fill:none;
+    stroke-linecap:round;
+    stroke-dasharray:34;
+    stroke-dashoffset:34;
+  }
+  .row.done .box svg path{
+    stroke-dashoffset:0;
+    transition:stroke-dashoffset .35s ease-out;
+  }
+
+  .txtwrap{
+    flex:1;
+    position:relative;
+    min-width:0;
+  }
+  .txt{
+    font-family:'Kalam',cursive;
+    font-weight:400;
+    font-size:19px;
+    line-height:1.35;
+    padding:2px 0;
+    cursor:text;
+    word-break:break-word;
+    outline:none;
+    min-height:26px;
+  }
+  .row.done .txt{
+    color:var(--pencil-light);
+    transition:color .3s ease-out;
+  }
+
+  .age{
+    font-family:'Caveat',cursive;
+    font-size:16px;
+    color:var(--red-pencil);
+    white-space:nowrap;
+    transform:rotate(-2deg);
+  }
+  .acts{
+    display:flex;gap:4px;
+    opacity:0;
+    transition:opacity .15s;
+  }
+  .row:hover .acts, .row:focus-within .acts{opacity:1;}
+  @media (hover:none){ .acts{opacity:.55;} }
+  .acts button{
+    background:none;border:none;cursor:pointer;
+    font-family:'Caveat',cursive;
+    font-size:18px;
+    color:var(--pencil);
+    padding:2px 6px;
+    border-radius:5px;
+    line-height:1;
+  }
+  .acts button:hover{color:var(--ink);background:rgba(0,0,0,.05);}
+  .acts button:focus-visible{outline:2px dashed var(--pencil);outline-offset:1px;}
+
+  .add-row{
+    display:flex;align-items:center;gap:12px;
+    min-height:var(--row-h);
+    border-bottom:1.5px solid var(--rule);
+  }
+  .add-row .plus{
+    font-family:'Caveat',cursive;
+    font-size:24px;
+    color:var(--pencil-light);
+    width:21px;text-align:center;
+    flex:none;
+  }
+  .add-row input{
+    flex:1;
+    border:none;background:transparent;
+    font-family:'Kalam',cursive;
+    font-size:19px;
+    color:var(--ink);
+    outline:none;
+    padding:4px 0;
+    min-width:0;
+  }
+  .add-row input::placeholder{color:var(--pencil-light);font-weight:300;}
+  .add-row.full{display:none;}
+
+  .empty-hint{
+    font-family:'Kalam',cursive;
+    font-weight:300;
+    font-size:18px;
+    color:var(--pencil-light);
+    min-height:var(--row-h);
+    display:flex;align-items:center;
+    border-bottom:1.5px solid var(--rule);
+  }
+
+  .notes-wrap{margin-top:8px;}
+  .notes{
+    width:100%;
+    min-height:114px;
+    border:none;
+    background:transparent;
+    resize:none;
+    overflow:hidden;
+    outline:none;
+    font-family:'Kalam',cursive;
+    font-weight:300;
+    font-size:18px;
+    color:var(--ink);
+    line-height:38px;
+    background-image:repeating-linear-gradient(
+      to bottom,
+      transparent,
+      transparent 36.5px,
+      var(--rule) 36.5px,
+      var(--rule) 38px
+    );
+    background-attachment:local;
+    padding:0;
+    display:block;
+  }
+  .notes::placeholder{color:var(--pencil-light);}
+
+  /* ---------- mini calendars ---------- */
+  .cal-strip{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:22px;
+    margin-top:10px;
+  }
+  .cal-nav{
+    margin-left:auto;
+    display:flex;
+    gap:6px;
+  }
+  .cal-nav button{
+    background:none;border:none;cursor:pointer;
+    font-family:'Caveat',cursive;
+    font-size:22px;
+    color:var(--ink);
+    padding:2px 8px;
+    border-radius:6px;
+    line-height:1;
+  }
+  .cal-nav button:hover{background:rgba(0,0,0,.05);}
+  .cal-nav button:focus-visible{outline:2px dashed var(--pencil);outline-offset:2px;}
+  .cal-nav .today-link{
+    font-size:18px;
+    color:var(--red-pencil);
+    text-decoration:underline;
+    text-underline-offset:3px;
+    text-decoration-style:wavy;
+    text-decoration-thickness:1px;
+  }
+  .cal-nav .today-link.hidden{display:none;}
+  .cal{font-family:'Kalam',cursive;}
+  .cal .cal-title{
+    font-family:'Caveat',cursive;
+    font-weight:600;
+    font-size:21px;
+    color:var(--ink);
+    margin-bottom:4px;
+    text-align:center;
+  }
+  .cal .cal-head, .cal .cal-week{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+  }
+  .cal .cal-head span{
+    font-size:11px;
+    font-weight:700;
+    color:var(--pencil-light);
+    text-align:center;
+    padding-bottom:2px;
+    letter-spacing:.5px;
+  }
+  .cal .cal-day{
+    position:relative;
+    background:none;border:none;
+    font-family:'Kalam',cursive;
+    font-size:13px;
+    color:var(--ink);
+    padding:3px 0 9px;
+    cursor:pointer;
+    border-radius:50%;
+    line-height:1.4;
+  }
+  .cal .cal-day:hover{background:rgba(0,0,0,.06);}
+  .cal .cal-day:focus-visible{outline:2px dashed var(--pencil);outline-offset:1px;}
+  .cal .cal-day.dim{color:var(--pencil-light);}
+  .cal .cal-day.blank{visibility:hidden;pointer-events:none;}
+  .cal .cal-day .dot{
+    position:absolute;
+    bottom:3px;left:50%;
+    transform:translateX(-50%);
+    width:5px;height:5px;
+    border-radius:50%;
+    background:var(--red-pencil);
+  }
+  .cal .cal-day .dot.faded{background:var(--pencil-light);}
+  .cal .cal-day.is-today{
+    color:var(--paper);
+    font-weight:700;
+  }
+  .cal .cal-day.is-today::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    margin:auto;
+    width:26px;height:26px;
+    background:var(--red-pencil);
+    border-radius:48% 52% 50% 50% / 52% 48% 52% 48%;
+    z-index:-1;
+    transform:rotate(-3deg);
+  }
+  .cal .cal-day.is-view:not(.is-today)::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    margin:auto;
+    width:26px;height:26px;
+    border:1.6px solid var(--red-pencil);
+    border-radius:48% 52% 50% 50% / 52% 48% 52% 48%;
+    transform:rotate(2deg);
+  }
+  .cal .cal-day.is-today .dot{background:var(--paper);}
+  @media (max-width:640px){
+    .cal-strip{grid-template-columns:1fr;gap:16px;max-width:280px;margin-left:auto;margin-right:auto;}
+    .cal .cal-day{font-size:14px;}
+  }
+
+  /* ---------- settings modal ---------- */
+  .overlay{
+    position:fixed;inset:0;
+    background:rgba(50,42,30,.4);
+    display:none;
+    align-items:flex-start;
+    justify-content:center;
+    padding:40px 12px;
+    z-index:30;
+    overflow-y:auto;
+  }
+  .overlay.open{display:flex;}
+  .panel{
+    background:var(--paper);
+    border-radius:4px;
+    box-shadow:0 12px 40px rgba(40,32,20,.35);
+    width:100%;
+    max-width:480px;
+    padding:24px 26px 28px;
+    position:relative;
+  }
+  .panel h2{
+    font-family:'Caveat',cursive;
+    font-weight:700;
+    font-size:30px;
+    margin-bottom:2px;
+  }
+  .panel h3{
+    font-family:'Caveat',cursive;
+    font-weight:600;
+    font-size:22px;
+    margin:20px 0 6px;
+    color:var(--ink);
+  }
+  .panel p{
+    font-family:'Kalam',cursive;
+    font-weight:300;
+    font-size:15px;
+    line-height:1.55;
+    color:var(--pencil);
+    margin-bottom:6px;
+  }
+  .panel .close{
+    position:absolute;top:10px;right:12px;
+    background:none;border:none;cursor:pointer;
+    font-family:'Caveat',cursive;
+    font-size:26px;color:var(--pencil);
+    line-height:1;padding:4px 8px;border-radius:6px;
+  }
+  .panel .close:hover{color:var(--ink);background:rgba(0,0,0,.05);}
+  .panel .btn{
+    font-family:'Caveat',cursive;
+    font-size:20px;
+    background:var(--red-pencil);
+    color:#fff;
+    border:none;border-radius:6px;
+    padding:6px 16px;
+    cursor:pointer;
+  }
+  .panel .btn.quiet{
+    background:transparent;
+    color:var(--ink);
+    border:1.5px solid var(--pencil-light);
+  }
+  .panel .btn:hover{filter:brightness(1.06);}
+  .panel .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
+  .panel input[type=text]{
+    width:100%;
+    font-family:monospace;
+    font-size:13px;
+    padding:7px 9px;
+    border:1.5px solid var(--pencil-light);
+    border-radius:6px;
+    background:#fff;
+    margin:4px 0 8px;
+  }
+  .panel code{
+    display:block;
+    font-size:12px;
+    background:#F1EDE2;
+    border:1px dashed var(--pencil-light);
+    border-radius:5px;
+    padding:6px 8px;
+    word-break:break-all;
+    margin:4px 0 8px;
+    user-select:all;
+  }
+  .panel .who{
+    font-family:'Kalam',cursive;
+    font-size:15px;
+    color:var(--ink);
+  }
+  .panel details summary{
+    font-family:'Caveat',cursive;
+    font-size:20px;
+    cursor:pointer;
+    color:var(--pencil);
+    margin-top:16px;
+  }
+  .panel hr{border:none;border-top:1.5px solid var(--rule);margin:16px 0 4px;}
+
+  .datepop{
+    position:absolute;
+    right:0;top:100%;
+    background:#fff;
+    border:1px solid var(--pencil-light);
+    border-radius:6px;
+    box-shadow:0 4px 14px rgba(60,50,30,.2);
+    padding:8px;
+    z-index:5;
+    display:flex;gap:6px;align-items:center;
+  }
+  .datepop input{font-family:inherit;font-size:15px;padding:2px 4px;}
+  .datepop button{
+    font-family:'Caveat',cursive;font-size:18px;
+    background:var(--red-pencil);color:#fff;
+    border:none;border-radius:5px;padding:2px 10px;cursor:pointer;
+  }
+
+  .toast{
+    position:fixed;
+    bottom:22px;left:50%;
+    transform:translateX(-50%);
+    background:var(--ink);color:var(--paper);
+    font-family:'Caveat',cursive;
+    font-size:19px;
+    padding:8px 18px;
+    border-radius:8px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .25s;
+    z-index:40;
+    max-width:90vw;
+    text-align:center;
+  }
+  .toast.show{opacity:1;}
+
+  @media (max-width:520px){
+    .sheet{padding:20px 16px 36px 52px;}
+    .sheet::before{left:38px;}
+    .hole{left:11px;width:13px;height:13px;}
+    .date-big{font-size:36px;}
+    .nav{width:100%;margin-left:0;justify-content:flex-start;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .row.done .txt{transition:none;}
+    .row.done .box svg path{transition:none;}
+  }
+</style>
+</head>
+<body>
+
+<div class="sheet">
+  <div class="hole h1"></div><div class="hole h2"></div><div class="hole h3"></div>
+
+  <header>
+    <div>
+      <div class="date-big" id="dateBig"></div>
+      <div class="date-sub" id="dateSub"></div>
+    </div>
+    <div class="nav">
+      <button id="prevBtn" aria-label="Previous day">&#8592; prev</button>
+      <button id="todayBtn" class="today-link">today</button>
+      <button id="nextBtn" aria-label="Next day">next &#8594;</button>
+      <button class="gear" id="gearBtn" aria-label="Settings" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.56-1.11 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.01A1.7 1.7 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.01a1.7 1.7 0 0 0 1.56 1.03H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51.95z"/></svg>
+      </button>
+    </div>
+  </header>
+  <div class="statusbar">
+    <div class="streak" id="streak"></div>
+    <div class="sync-chip" id="syncChip"></div>
+  </div>
+  <div id="dayNote"></div>
+
+  <div class="section-title">Top three
+    <small>what matters most</small>
+  </div>
+  <svg class="underline-squiggle" viewBox="0 0 120 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 4 C 14 1, 22 5, 34 3 S 58 1, 70 4 S 100 2, 118 3"/></svg>
+  <div id="priList"></div>
+  <div class="add-row" id="priAddRow">
+    <span class="plus">+</span>
+    <input id="priInput" type="text" placeholder="Add a priority (up to 3), press Enter&#8230;" aria-label="Add a priority">
+  </div>
+
+  <div class="section-title">Everything else
+    <small>rolls over until it's done</small>
+  </div>
+  <svg class="underline-squiggle" viewBox="0 0 120 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 3 C 18 5, 30 1, 44 4 S 72 5, 86 2 S 106 4, 118 3"/></svg>
+  <div id="taskList"></div>
+  <div class="add-row">
+    <span class="plus">+</span>
+    <input id="addInput" type="text" placeholder="Add a task, press Enter&#8230;" aria-label="Add a task">
+  </div>
+
+  <div class="section-title">Notes
+    <small>scribbles for the day</small>
+  </div>
+  <div class="notes-wrap">
+    <textarea class="notes" id="notes" rows="3" placeholder="Jot anything down&#8230; e.g. &#8220;Add a task to Tuesday to book a flight to Amsterdam.&#8221;"></textarea>
+  </div>
+
+  <div class="section-title">Calendar
+    <small>&#8226; open or scheduled &nbsp;&#8226; all done</small>
+    <span class="cal-nav">
+      <button id="calPrev" aria-label="Back one month">&#8592;</button>
+      <button id="calToday" class="today-link" aria-label="Back to the current month">today</button>
+      <button id="calNext" aria-label="Forward one month">&#8594;</button>
+    </span>
+  </div>
+  <svg class="underline-squiggle" viewBox="0 0 120 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 4 C 16 2, 28 5, 42 3 S 70 1, 84 4 S 106 2, 118 4"/></svg>
+  <div class="cal-strip" id="calStrip"></div>
+</div>
+
+<!-- settings -->
+<div class="overlay" id="overlay">
+  <div class="panel" role="dialog" aria-label="Settings">
+    <button class="close" id="closeBtn" aria-label="Close settings">&#215;</button>
+    <h2>Settings</h2>
+
+    <h3>OneDrive sync</h3>
+    <div id="syncSection"></div>
+
+    <details id="setupDetails">
+      <summary>One-time setup (Microsoft app ID)</summary>
+      <p>To let this app talk to your OneDrive, Microsoft requires a free "app registration." You do it once, get an <b>Application (client) ID</b>, and paste it below. When registering, use this exact <b>redirect URI</b> (type: Single-page application):</p>
+      <code id="redirectUri"></code>
+      <p>Application (client) ID:</p>
+      <input type="text" id="clientIdInput" placeholder="e.g. 1a2b3c4d-...." autocomplete="off">
+      <div class="btnrow">
+        <button class="btn" id="saveClientId">Save ID</button>
+      </div>
+    </details>
+
+    <hr>
+    <h3>Backup</h3>
+    <p>Download a copy of everything, or restore from a backup file. Restoring replaces what's currently in the app.</p>
+    <div class="btnrow">
+      <button class="btn quiet" id="exportBtn">Download backup</button>
+      <button class="btn quiet" id="importBtn">Restore from file</button>
+      <input type="file" id="importFile" accept="application/json" style="display:none">
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://alcdn.msauth.net/browser/2.38.1/js/msal-browser.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  /* If this window is the Microsoft sign-in popup returning to the app,
+     don't boot the app here. The main window reads the sign-in result
+     from this popup's URL and closes it. Booting the app here would
+     consume the result before the main window sees it. */
+  if(window.opener && window.opener !== window &&
+     /[#?&](code|error)=/.test(location.hash + "&" + location.search)){
+    document.body.innerHTML =
+      '<p style="font-family:sans-serif;padding:24px;color:#3B3A36;background:#FCF9F1">' +
+      'Completing sign-in\u2026 this window will close itself.</p>';
+    return;
+  }
+
+  /* ================= state ================= */
+  const KEY = "paper-list-v1";
+  const CID_KEY = "paper-list-clientid";
+  const CLOUD_FILE = "paper-list.json";
+  const SCOPES = ["Files.ReadWrite.AppFolder"];
+
+  let state = { days:{}, updatedAt:0 };
+  let viewDate = todayStr();
+  let saveTimer = null, cloudTimer = null;
+  let msalApp = null, account = null;
+  let sync = "off"; // off | ready | syncing | ok | error
+  let lastAuthError = "";
+
+  function todayStr(){
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  }
+  function parseDate(s){
+    const p = s.split("-");
+    return new Date(+p[0], +p[1]-1, +p[2]);
+  }
+  function shiftDate(s, n){
+    const d = parseDate(s);
+    d.setDate(d.getDate()+n);
+    return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+  }
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function emptyDay(){ return { pri:[], tasks:[], notes:"" }; }
+  function day(dateStr){
+    if(!state.days[dateStr]) state.days[dateStr] = emptyDay();
+    return state.days[dateStr];
+  }
+  function migrate(){
+    if(!state || typeof state !== "object") state = { days:{}, updatedAt:0 };
+    if(!state.days) state.days = {};
+    if(!state.updatedAt) state.updatedAt = 0;
+    Object.keys(state.days).forEach(function(k){
+      const d = state.days[k];
+      if(Array.isArray(d.pri)) d.pri = d.pri.filter(function(p){ return p && p.text && p.text.trim(); });
+      else d.pri = [];
+      if(!Array.isArray(d.tasks)) d.tasks = [];
+      if(typeof d.notes !== "string") d.notes = "";
+    });
+  }
+
+  /* ================= local storage ================= */
+  function localOk(){
+    try{
+      const t="__t__"; window.localStorage.setItem(t,"1"); window.localStorage.removeItem(t);
+      return true;
+    }catch(e){ return false; }
+  }
+  const hasLocal = localOk();
+
+  function loadLocal(){
+    if(!hasLocal) return;
+    try{
+      const raw = window.localStorage.getItem(KEY);
+      if(raw) state = JSON.parse(raw);
+    }catch(e){ console.error(e); }
+    migrate();
+  }
+  function saveLocal(){
+    if(!hasLocal) return;
+    try{ window.localStorage.setItem(KEY, JSON.stringify(state)); }
+    catch(e){ console.error(e); }
+  }
+  function save(){
+    state.updatedAt = Date.now();
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveLocal, 250);
+    scheduleCloudPush();
+  }
+
+  /* ================= OneDrive sync ================= */
+  function getClientId(){ return hasLocal ? (window.localStorage.getItem(CID_KEY) || "") : ""; }
+
+  async function initAuth(){
+    const cid = getClientId();
+    if(!cid || !window.msal){ sync = "off"; renderSync(); return; }
+    try{
+      msalApp = new msal.PublicClientApplication({
+        auth:{
+          clientId: cid,
+          // "consumers" = personal Microsoft accounts; matches a registration
+          // whose supported account type is "Personal Microsoft accounts only"
+          authority: "https://login.microsoftonline.com/consumers",
+          redirectUri: location.origin + location.pathname
+        },
+        cache:{ cacheLocation:"localStorage" }
+      });
+      // completes a sign-in that returned via full-page redirect (mobile fallback)
+      const redirectResult = await msalApp.handleRedirectPromise();
+      if(redirectResult && redirectResult.account){
+        account = redirectResult.account;
+        msalApp.setActiveAccount(account);
+        lastAuthError = "";
+        sync = "ready";
+        renderSync();
+        await pullCloud();
+        showToast("Signed in \u2014 syncing with OneDrive");
+        return;
+      }
+      const accts = msalApp.getAllAccounts();
+      if(accts.length){
+        account = accts[0];
+        msalApp.setActiveAccount(account);
+        sync = "ready";
+        await pullCloud();
+      } else {
+        sync = "ready";
+      }
+    }catch(e){
+      console.error("auth init failed", e);
+      showAuthError(e);
+      sync = "error";
+    }
+    renderSync();
+  }
+
+  function showAuthError(e){
+    let msg = (e && (e.errorCode || e.name)) || "unknown error";
+    let detail = (e && e.errorMessage) ? e.errorMessage.split("\n")[0] : "";
+    // surface the AADSTS code if Microsoft sent one; it pinpoints the config issue
+    const m = /AADSTS\d+/.exec(detail || "") || /AADSTS\d+/.exec((e && e.message) || "");
+    if(m) msg = m[0] + " (" + msg + ")";
+    lastAuthError = msg;
+    showToast("Sign-in failed: " + msg);
+    renderSync();
+  }
+
+  async function signInRedirect(){
+    if(!msalApp){ showToast("Add your Microsoft app ID first (see setup)"); return; }
+    try{
+      await msalApp.loginRedirect({ scopes: SCOPES });
+    }catch(e){
+      console.error(e);
+      showAuthError(e);
+    }
+  }
+
+  async function getToken(){
+    const req = { scopes: SCOPES, account: account };
+    try{
+      const r = await msalApp.acquireTokenSilent(req);
+      return r.accessToken;
+    }catch(e){
+      const r = await msalApp.acquireTokenPopup({ scopes: SCOPES });
+      account = r.account;
+      return r.accessToken;
+    }
+  }
+
+  async function signIn(){
+    if(!msalApp){ showToast("Add your Microsoft app ID first (see setup)"); return; }
+    try{
+      const r = await msalApp.loginPopup({ scopes: SCOPES });
+      account = r.account;
+      msalApp.setActiveAccount(account);
+      lastAuthError = "";
+      sync = "ready";
+      renderSync();
+      await pullCloud();
+      showToast("Signed in \u2014 syncing with OneDrive");
+    }catch(e){
+      console.error(e);
+      if(e && e.errorCode === "user_cancelled"){
+        lastAuthError = "The sign-in window was closed before finishing. If it never closed on its own, try the redirect sign-in below.";
+        renderSync();
+        return;
+      }
+      const popupIssues = ["popup_window_error","empty_window_error","monitor_window_timeout","block_nested_popups"];
+      if(e && popupIssues.indexOf(e.errorCode) > -1){
+        // popups blocked (common on phones): use a full-page redirect instead;
+        // initAuth picks the result up when the page returns
+        showToast("Popup blocked \u2014 redirecting to Microsoft sign-in\u2026");
+        try{ await msalApp.loginRedirect({ scopes: SCOPES }); }catch(e2){ showAuthError(e2); }
+        return;
+      }
+      showAuthError(e);
+    }
+    renderSync();
+  }
+
+  async function signOut(){
+    if(!msalApp || !account) return;
+    try{ await msalApp.logoutPopup({ account: account }); }catch(e){ /* fine */ }
+    account = null;
+    sync = getClientId() ? "ready" : "off";
+    renderSync();
+    showToast("Signed out \u2014 saving on this device only");
+  }
+
+  let lastSyncError = "";
+
+  async function graphError(res, verb){
+    let snippet = "";
+    try{
+      const body = await res.text();
+      const j = JSON.parse(body);
+      snippet = (j.error && (j.error.code + " \u2014 " + j.error.message)) || body.slice(0,140);
+    }catch(e){ /* body wasn't json */ }
+    return verb + " " + res.status + (snippet ? ": " + snippet : "");
+  }
+
+  async function pullCloud(){
+    if(!account) return;
+    sync = "syncing"; renderSync();
+    try{
+      const token = await getToken();
+      const res = await fetch("https://graph.microsoft.com/v1.0/me/drive/special/approot:/" + CLOUD_FILE + ":/content", {
+        headers:{ Authorization: "Bearer " + token }
+      });
+      if(res.status === 404){
+        await pushCloud(); // first run: nothing in cloud yet
+        return;
+      }
+      if(!res.ok){
+        lastSyncError = await graphError(res, "read");
+        throw new Error(lastSyncError);
+      }
+      const cloud = await res.json();
+      if(cloud && cloud.days && (cloud.updatedAt || 0) > (state.updatedAt || 0)){
+        state = cloud;
+        migrate();
+        saveLocal();
+        runCarryover();
+        render();
+      } else if((state.updatedAt || 0) > (cloud.updatedAt || 0)){
+        await pushCloud();
+        return;
+      }
+      sync = "ok";
+      lastSyncError = "";
+    }catch(e){
+      console.error("pull failed", e);
+      if(!lastSyncError) lastSyncError = (e && e.message) || "network error";
+      sync = "error";
+    }
+    renderSync();
+  }
+
+  function scheduleCloudPush(){
+    if(!account) return;
+    clearTimeout(cloudTimer);
+    cloudTimer = setTimeout(pushCloud, 1500);
+  }
+
+  async function pushCloud(){
+    if(!account) return;
+    sync = "syncing"; renderSync();
+    try{
+      const token = await getToken();
+      const res = await fetch("https://graph.microsoft.com/v1.0/me/drive/special/approot:/" + CLOUD_FILE + ":/content", {
+        method:"PUT",
+        headers:{ Authorization: "Bearer " + token, "Content-Type": "application/json" },
+        body: JSON.stringify(state)
+      });
+      if(!res.ok){
+        lastSyncError = await graphError(res, "write");
+        throw new Error(lastSyncError);
+      }
+      sync = "ok";
+      lastSyncError = "";
+    }catch(e){
+      console.error("push failed", e);
+      if(!lastSyncError) lastSyncError = (e && e.message) || "network error";
+      sync = "error";
+    }
+    renderSync();
+  }
+
+  window.addEventListener("online", function(){ if(account) pullCloud(); });
+
+  /* ================= carryover ================= */
+  function runCarryover(){
+    const today = todayStr();
+    const moved = [];
+    Object.keys(state.days).forEach(function(dStr){
+      if(dStr >= today) return;
+      const d = state.days[dStr];
+      const priKeep = [];
+      d.pri.forEach(function(p){
+        if(p.done) priKeep.push(p);
+        else moved.push({ id:p.id || uid(), text:p.text, done:false, age:(p.age||0)+1 });
+      });
+      d.pri = priKeep;
+      const keep = [];
+      d.tasks.forEach(function(t){
+        if(t.done) keep.push(t);
+        else moved.push({ id:t.id, text:t.text, done:false, age:(t.age||0)+1 });
+      });
+      d.tasks = keep;
+    });
+    if(moved.length){
+      const td = day(today);
+      moved.forEach(function(m){ td.tasks.push(m); });
+      save();
+      showToast(moved.length === 1 ? "1 task rolled over to today" : moved.length + " tasks rolled over to today");
+    }
+  }
+
+  /* ================= streak ================= */
+  function dayComplete(dStr){
+    const d = state.days[dStr];
+    if(!d) return false;
+    return d.pri.length === 3 && d.pri.every(function(p){ return p.done; });
+  }
+  function streakCount(){
+    let n = 0;
+    let cur = todayStr();
+    if(!dayComplete(cur)) cur = shiftDate(cur,-1);
+    while(dayComplete(cur)){ n++; cur = shiftDate(cur,-1); }
+    return n;
+  }
+
+  /* ================= render ================= */
+  const els = {};
+  ["dateBig","dateSub","streak","syncChip","dayNote","priList","priAddRow","priInput",
+   "taskList","addInput","notes","toast","overlay","gearBtn","closeBtn","syncSection",
+   "setupDetails","redirectUri","clientIdInput","saveClientId","exportBtn","importBtn","importFile"
+  ].forEach(function(id){ els[id] = document.getElementById(id); });
+
+  const WD = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const MO = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+  function fmtHeader(dStr){
+    const d = parseDate(dStr);
+    return { big: WD[d.getDay()], sub: MO[d.getMonth()] + " " + d.getDate() + ", " + d.getFullYear() };
+  }
+  function checkSVG(){
+    return '<svg viewBox="0 0 28 28" aria-hidden="true"><path d="M5 14 L 11 21 L 24 4"/></svg>';
+  }
+
+  function makeRow(item, kind, index){
+    const row = document.createElement("div");
+    row.className = "row" + (item.done ? " done" : "");
+
+    if(kind === "pri"){
+      const num = document.createElement("span");
+      num.className = "num";
+      num.textContent = index+1;
+      row.appendChild(num);
+    }
+
+    const box = document.createElement("button");
+    box.className = "box";
+    box.setAttribute("aria-label", item.done ? "Mark not done" : "Mark done");
+    box.innerHTML = checkSVG();
+    box.addEventListener("click", function(){
+      item.done = !item.done;
+      save(); render();
+    });
+    row.appendChild(box);
+
+    const wrap = document.createElement("div");
+    wrap.className = "txtwrap";
+    const txt = document.createElement("div");
+    txt.className = "txt";
+    txt.contentEditable = "true";
+    txt.spellcheck = false;
+    txt.textContent = item.text;
+    txt.addEventListener("blur", function(){
+      const v = txt.textContent.trim();
+      if(!v){ removeItem(item, kind); save(); render(); return; }
+      if(v !== item.text){ item.text = v; save(); }
+    });
+    txt.addEventListener("keydown", function(e){
+      if(e.key === "Enter"){ e.preventDefault(); txt.blur(); }
+    });
+    wrap.appendChild(txt);
+    row.appendChild(wrap);
+
+    if(item.age > 0){
+      const age = document.createElement("span");
+      age.className = "age";
+      age.title = "Carried over " + item.age + (item.age===1?" day":" days");
+      age.textContent = "\u00d7" + item.age + "d";
+      row.appendChild(age);
+    }
+
+    const acts = document.createElement("div");
+    acts.className = "acts";
+
+    const defer = document.createElement("button");
+    defer.textContent = "\u2192";
+    defer.title = "Send to another day";
+    defer.setAttribute("aria-label","Send to another day");
+    defer.addEventListener("click", function(e){
+      e.stopPropagation();
+      openDatePop(row, item, kind);
+    });
+    acts.appendChild(defer);
+
+    const del = document.createElement("button");
+    del.textContent = "\u00d7";
+    del.title = "Delete";
+    del.setAttribute("aria-label","Delete");
+    del.addEventListener("click", function(){
+      removeItem(item, kind);
+      save(); render();
+    });
+    acts.appendChild(del);
+    row.appendChild(acts);
+
+    return row;
+  }
+
+  function removeItem(item, kind){
+    const d = day(viewDate);
+    const list = kind === "pri" ? d.pri : d.tasks;
+    const i = list.indexOf(item);
+    if(i > -1) list.splice(i,1);
+  }
+
+  let openPop = null;
+  function closePop(){ if(openPop){ openPop.remove(); openPop = null; } }
+  function openDatePop(row, item, kind){
+    closePop();
+    const pop = document.createElement("div");
+    pop.className = "datepop";
+    pop.addEventListener("mousedown", function(e){ e.stopPropagation(); });
+    const inp = document.createElement("input");
+    inp.type = "date";
+    inp.value = shiftDate(viewDate, 1);
+    const go = document.createElement("button");
+    go.type = "button";
+    go.textContent = "move";
+
+    function doMove(){
+      let target = (inp.value || "").trim();
+      if(!target || !/^\d{4}-\d{2}-\d{2}$/.test(target)){
+        showToast("Pick a complete date first (or finish typing it)");
+        inp.focus();
+        return;
+      }
+      removeItem(item, kind);
+      day(target).tasks.push({ id:item.id || uid(), text:item.text, done:false, age:item.age||0 });
+      closePop(); save(); render();
+      showToast("Moved to " + fmtHeader(target).big + ", " + fmtHeader(target).sub);
+    }
+
+    go.addEventListener("click", function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      doMove();
+    });
+    inp.addEventListener("keydown", function(e){
+      if(e.key === "Enter"){ e.preventDefault(); doMove(); }
+    });
+    pop.appendChild(inp); pop.appendChild(go);
+    row.appendChild(pop);
+    openPop = pop;
+    inp.focus();
+  }
+  document.addEventListener("click", function(e){
+    if(openPop && !openPop.contains(e.target) && e.target.title !== "Send to another day") closePop();
+  });
+
+  function autoGrowNotes(){
+    els.notes.style.height = "auto";
+    els.notes.style.height = Math.max(114, els.notes.scrollHeight) + "px";
+  }
+
+  function render(){
+    closePop();
+    const d = day(viewDate);
+    const h = fmtHeader(viewDate);
+    els.dateBig.textContent = h.big;
+    els.dateSub.textContent = h.sub;
+
+    const today = todayStr();
+    document.getElementById("todayBtn").classList.toggle("hidden", viewDate === today);
+
+    if(viewDate > today){
+      els.dayNote.innerHTML = '<div class="future-note">planning ahead \u2014 anything unfinished will roll to today when the day passes</div>';
+    } else if(viewDate < today){
+      els.dayNote.innerHTML = '<div class="past-note">a past page \u2014 unfinished items already rolled forward</div>';
+    } else {
+      els.dayNote.innerHTML = "";
+    }
+
+    const s = streakCount();
+    if(s > 0){
+      const tally = "\u2713".repeat(Math.min(s,7));
+      els.streak.innerHTML = tally + " <b>" + s + "-day streak</b> of finishing your top three";
+    } else {
+      els.streak.textContent = "finish all three priorities to start a streak";
+    }
+
+    els.priList.innerHTML = "";
+    if(d.pri.length === 0){
+      const hint = document.createElement("div");
+      hint.className = "empty-hint";
+      hint.textContent = "no priorities picked yet";
+      els.priList.appendChild(hint);
+    } else {
+      d.pri.forEach(function(p,i){ els.priList.appendChild(makeRow(p,"pri",i)); });
+    }
+    els.priAddRow.classList.toggle("full", d.pri.length >= 3);
+
+    els.taskList.innerHTML = "";
+    if(d.tasks.length === 0){
+      const hint = document.createElement("div");
+      hint.className = "empty-hint";
+      hint.textContent = "nothing here yet";
+      els.taskList.appendChild(hint);
+    } else {
+      d.tasks.forEach(function(t){ els.taskList.appendChild(makeRow(t,"task")); });
+    }
+
+    els.notes.value = d.notes || "";
+    autoGrowNotes();
+    renderCalendars();
+  }
+
+  /* ================= mini calendars ================= */
+  let calOffset = 0;          // months shifted via the calendar arrows
+  let calAnchor = viewDate;   // resets the offset when the viewed day changes
+
+  function dayStatus(dStr){
+    const d = state.days[dStr];
+    if(!d) return null;
+    const hasAny = d.pri.length || d.tasks.length;
+    if(!hasAny) return null;
+    const open = d.pri.some(function(p){ return !p.done; }) ||
+                 d.tasks.some(function(t){ return !t.done; });
+    return open ? "open" : "done";
+  }
+
+  function renderCalendars(){
+    const strip = document.getElementById("calStrip");
+    strip.innerHTML = "";
+    if(calAnchor !== viewDate){ calOffset = 0; calAnchor = viewDate; }
+    const anchor = parseDate(viewDate);
+    const base = new Date(anchor.getFullYear(), anchor.getMonth() + calOffset, 1);
+    const today = todayStr();
+    const now = parseDate(today);
+    // show the calendar's "today" link only when the centered month
+    // isn't the current month
+    const offCurrent = base.getFullYear() !== now.getFullYear() || base.getMonth() !== now.getMonth();
+    document.getElementById("calToday").classList.toggle("hidden", !offCurrent);
+    const DOW = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+
+    for(let off=-1; off<=1; off++){
+      const first = new Date(base.getFullYear(), base.getMonth()+off, 1);
+      const y = first.getFullYear(), m = first.getMonth();
+      const daysInMonth = new Date(y, m+1, 0).getDate();
+      const startDow = first.getDay();
+
+      const cal = document.createElement("div");
+      cal.className = "cal";
+
+      const title = document.createElement("div");
+      title.className = "cal-title";
+      title.textContent = MO[m] + " " + y;
+      cal.appendChild(title);
+
+      const head = document.createElement("div");
+      head.className = "cal-head";
+      DOW.forEach(function(w){
+        const sp = document.createElement("span");
+        sp.textContent = w;
+        head.appendChild(sp);
+      });
+      cal.appendChild(head);
+
+      let week = document.createElement("div");
+      week.className = "cal-week";
+      for(let b=0;b<startDow;b++){
+        const blank = document.createElement("button");
+        blank.className = "cal-day blank";
+        blank.tabIndex = -1;
+        week.appendChild(blank);
+      }
+      for(let dayNum=1; dayNum<=daysInMonth; dayNum++){
+        if((startDow + dayNum - 1) % 7 === 0 && dayNum !== 1){
+          cal.appendChild(week);
+          week = document.createElement("div");
+          week.className = "cal-week";
+        }
+        const dStr = y + "-" + String(m+1).padStart(2,"0") + "-" + String(dayNum).padStart(2,"0");
+        const btn = document.createElement("button");
+        btn.className = "cal-day";
+        btn.textContent = dayNum;
+        btn.setAttribute("aria-label", MO[m] + " " + dayNum + ", " + y);
+        if(dStr === today) btn.classList.add("is-today");
+        if(dStr === viewDate) btn.classList.add("is-view");
+        if(dStr < today && dStr !== viewDate) btn.classList.add("dim");
+        const st = dayStatus(dStr);
+        if(st){
+          const dot = document.createElement("span");
+          dot.className = "dot" + (st === "done" ? " faded" : "");
+          btn.appendChild(dot);
+        }
+        btn.addEventListener("click", function(){
+          viewDate = dStr;
+          render();
+          document.querySelector(".sheet").scrollIntoView({behavior:"smooth", block:"start"});
+        });
+        week.appendChild(btn);
+      }
+      cal.appendChild(week);
+      strip.appendChild(cal);
+    }
+  }
+
+  /* ================= settings UI ================= */
+  function renderSync(){
+    // chip on the sheet
+    const chip = els.syncChip;
+    if(sync === "off"){ chip.textContent = "saving on this device"; chip.className = "sync-chip"; }
+    else if(sync === "syncing"){ chip.textContent = "syncing\u2026"; chip.className = "sync-chip"; }
+    else if(sync === "ok"){ chip.textContent = "synced to OneDrive \u2713"; chip.className = "sync-chip ok"; }
+    else if(sync === "error"){ chip.textContent = "sync problem \u2014 saved locally"; chip.className = "sync-chip err"; }
+    else if(sync === "ready" && !account){ chip.textContent = "not signed in"; chip.className = "sync-chip"; }
+    else { chip.textContent = ""; chip.className = "sync-chip"; }
+
+    // panel section
+    const sec = els.syncSection;
+    sec.innerHTML = "";
+    const p = document.createElement("p");
+    if(!getClientId()){
+      p.textContent = "Your list currently saves in this browser only. To sync it across devices via your OneDrive, complete the one-time setup below, then sign in.";
+      sec.appendChild(p);
+    } else if(!account){
+      p.textContent = "Setup done. Sign in with your Microsoft account to start syncing.";
+      sec.appendChild(p);
+      const rowB = document.createElement("div");
+      rowB.className = "btnrow";
+      const b = document.createElement("button");
+      b.className = "btn";
+      b.textContent = "Sign in with Microsoft";
+      b.addEventListener("click", signIn);
+      const br = document.createElement("button");
+      br.className = "btn quiet";
+      br.textContent = "Sign in (redirect)";
+      br.title = "Uses a full-page sign-in instead of a popup";
+      br.addEventListener("click", signInRedirect);
+      rowB.appendChild(b);
+      rowB.appendChild(br);
+      sec.appendChild(rowB);
+      if(lastAuthError){
+        const err = document.createElement("p");
+        err.style.color = "var(--red-pencil)";
+        err.style.marginTop = "8px";
+        err.textContent = "Last attempt: " + lastAuthError;
+        sec.appendChild(err);
+      }
+    } else {
+      const who = document.createElement("p");
+      who.className = "who";
+      who.textContent = "Signed in as " + (account.username || account.name || "your Microsoft account") + ". Your list syncs to a private app folder in your OneDrive (Apps \u203a Paper List).";
+      sec.appendChild(who);
+      const rowEl = document.createElement("div");
+      rowEl.className = "btnrow";
+      const syncNow = document.createElement("button");
+      syncNow.className = "btn quiet";
+      syncNow.textContent = "Sync now";
+      syncNow.addEventListener("click", pullCloud);
+      const out = document.createElement("button");
+      out.className = "btn quiet";
+      out.textContent = "Sign out";
+      out.addEventListener("click", signOut);
+      rowEl.appendChild(syncNow);
+      rowEl.appendChild(out);
+      sec.appendChild(rowEl);
+      if(sync === "error" && lastSyncError){
+        const err = document.createElement("p");
+        err.style.color = "var(--red-pencil)";
+        err.style.marginTop = "8px";
+        err.textContent = "Sync error: " + lastSyncError;
+        sec.appendChild(err);
+      }
+    }
+    // setup details open state
+    els.setupDetails.open = !getClientId();
+  }
+
+  els.gearBtn.addEventListener("click", function(){
+    els.redirectUri.textContent = location.origin + location.pathname;
+    els.clientIdInput.value = getClientId();
+    renderSync();
+    els.overlay.classList.add("open");
+  });
+  els.closeBtn.addEventListener("click", function(){ els.overlay.classList.remove("open"); });
+  els.overlay.addEventListener("click", function(e){
+    if(e.target === els.overlay) els.overlay.classList.remove("open");
+  });
+
+  els.saveClientId.addEventListener("click", function(){
+    const v = els.clientIdInput.value.trim();
+    if(!hasLocal){ showToast("This browser blocks local storage \u2014 can't save settings"); return; }
+    if(!v){ showToast("Paste your Application (client) ID first"); return; }
+    window.localStorage.setItem(CID_KEY, v);
+    showToast("Saved \u2014 now sign in");
+    initAuth();
+  });
+
+  els.exportBtn.addEventListener("click", function(){
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type:"application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "paper-list-backup-" + todayStr() + ".json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  els.importBtn.addEventListener("click", function(){ els.importFile.click(); });
+  els.importFile.addEventListener("change", function(){
+    const f = els.importFile.files[0];
+    if(!f) return;
+    const r = new FileReader();
+    r.onload = function(){
+      try{
+        const data = JSON.parse(r.result);
+        if(!data || typeof data !== "object" || !data.days) throw new Error("bad file");
+        state = data;
+        migrate();
+        save();
+        runCarryover();
+        render();
+        showToast("Backup restored");
+        els.overlay.classList.remove("open");
+      }catch(e){
+        showToast("That file doesn't look like a Paper List backup");
+      }
+      els.importFile.value = "";
+    };
+    r.readAsText(f);
+  });
+
+  /* ================= toast ================= */
+  let toastTimer = null;
+  function showToast(msg){
+    els.toast.textContent = msg;
+    els.toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ els.toast.classList.remove("show"); }, 3000);
+  }
+
+  /* ================= events ================= */
+  document.getElementById("prevBtn").addEventListener("click", function(){ viewDate = shiftDate(viewDate,-1); render(); });
+  document.getElementById("nextBtn").addEventListener("click", function(){ viewDate = shiftDate(viewDate,1); render(); });
+  document.getElementById("todayBtn").addEventListener("click", function(){ viewDate = todayStr(); render(); });
+  document.getElementById("calPrev").addEventListener("click", function(){ calOffset--; renderCalendars(); });
+  document.getElementById("calNext").addEventListener("click", function(){ calOffset++; renderCalendars(); });
+  document.getElementById("calToday").addEventListener("click", function(){
+    // recenter the three-month window on the current month,
+    // regardless of which day's page is open
+    const v = parseDate(viewDate);
+    const n = parseDate(todayStr());
+    calOffset = (n.getFullYear() - v.getFullYear()) * 12 + (n.getMonth() - v.getMonth());
+    renderCalendars();
+  });
+
+  els.priInput.addEventListener("keydown", function(e){
+    if(e.key === "Enter"){
+      const v = els.priInput.value.trim();
+      if(!v) return;
+      const d = day(viewDate);
+      if(d.pri.length >= 3) return;
+      d.pri.push({ id:uid(), text:v, done:false });
+      els.priInput.value = "";
+      save(); render();
+      if(d.pri.length < 3) els.priInput.focus();
+    }
+  });
+
+  els.addInput.addEventListener("keydown", function(e){
+    if(e.key === "Enter"){
+      const v = els.addInput.value.trim();
+      if(!v) return;
+      day(viewDate).tasks.push({ id:uid(), text:v, done:false, age:0 });
+      els.addInput.value = "";
+      save(); render();
+      els.addInput.focus();
+    }
+  });
+
+  els.notes.addEventListener("input", function(){
+    day(viewDate).notes = els.notes.value;
+    autoGrowNotes();
+    save();
+  });
+
+  /* ================= boot ================= */
+  loadLocal();
+  runCarryover();
+  render();
+  if(!hasLocal) showToast("Heads up: this browser blocks storage \u2014 nothing will be saved");
+  initAuth();
+
+  if("serviceWorker" in navigator && location.protocol === "https:"){
+    navigator.serviceWorker.register("sw.js").catch(function(e){ console.warn("sw", e); });
+  }
+})();
+</script>
+</body>
+</html>
