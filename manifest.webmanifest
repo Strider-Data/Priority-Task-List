@@ -1,0 +1,14 @@
+{
+  "name": "Paper List",
+  "short_name": "Paper List",
+  "description": "A daily to-do list that looks like paper. Three priorities, everything else rolls over.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#E9E2D3",
+  "theme_color": "#FCF9F1",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
