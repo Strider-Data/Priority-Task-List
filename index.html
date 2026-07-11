@@ -802,9 +802,21 @@
         },
         cache:{ cacheLocation:"localStorage" }
       });
+      // completes a sign-in that returned via full-page redirect (mobile fallback)
+      const redirectResult = await msalApp.handleRedirectPromise();
+      if(redirectResult && redirectResult.account){
+        account = redirectResult.account;
+        msalApp.setActiveAccount(account);
+        sync = "ready";
+        renderSync();
+        await pullCloud();
+        showToast("Signed in \u2014 syncing with OneDrive");
+        return;
+      }
       const accts = msalApp.getAllAccounts();
       if(accts.length){
         account = accts[0];
+        msalApp.setActiveAccount(account);
         sync = "ready";
         await pullCloud();
       } else {
@@ -812,9 +824,19 @@
       }
     }catch(e){
       console.error("auth init failed", e);
+      showAuthError(e);
       sync = "error";
     }
     renderSync();
+  }
+
+  function showAuthError(e){
+    let msg = (e && (e.errorCode || e.name)) || "unknown error";
+    let detail = (e && e.errorMessage) ? e.errorMessage.split("\n")[0] : "";
+    // surface the AADSTS code if Microsoft sent one; it pinpoints the config issue
+    const m = /AADSTS\d+/.exec(detail || "") || /AADSTS\d+/.exec((e && e.message) || "");
+    if(m) msg = m[0] + " (" + msg + ")";
+    showToast("Sign-in failed: " + msg);
   }
 
   async function getToken(){
@@ -834,13 +856,23 @@
     try{
       const r = await msalApp.loginPopup({ scopes: SCOPES });
       account = r.account;
+      msalApp.setActiveAccount(account);
       sync = "ready";
       renderSync();
       await pullCloud();
       showToast("Signed in \u2014 syncing with OneDrive");
     }catch(e){
       console.error(e);
-      if(e && e.errorCode !== "user_cancelled") showToast("Sign-in didn't complete");
+      if(e && e.errorCode === "user_cancelled"){ renderSync(); return; }
+      const popupIssues = ["popup_window_error","empty_window_error","monitor_window_timeout","block_nested_popups"];
+      if(e && popupIssues.indexOf(e.errorCode) > -1){
+        // popups blocked (common on phones): use a full-page redirect instead;
+        // initAuth picks the result up when the page returns
+        showToast("Popup blocked \u2014 redirecting to Microsoft sign-in\u2026");
+        try{ await msalApp.loginRedirect({ scopes: SCOPES }); }catch(e2){ showAuthError(e2); }
+        return;
+      }
+      showAuthError(e);
     }
     renderSync();
   }
