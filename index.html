@@ -714,6 +714,18 @@
 (function(){
   "use strict";
 
+  /* If this window is the Microsoft sign-in popup returning to the app,
+     don't boot the app here. The main window reads the sign-in result
+     from this popup's URL and closes it. Booting the app here would
+     consume the result before the main window sees it. */
+  if(window.opener && window.opener !== window &&
+     /[#?&](code|error)=/.test(location.hash + "&" + location.search)){
+    document.body.innerHTML =
+      '<p style="font-family:sans-serif;padding:24px;color:#3B3A36;background:#FCF9F1">' +
+      'Completing sign-in\u2026 this window will close itself.</p>';
+    return;
+  }
+
   /* ================= state ================= */
   const KEY = "paper-list-v1";
   const CID_KEY = "paper-list-clientid";
